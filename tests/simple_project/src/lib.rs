@@ -1,6 +1,8 @@
 /// Foo function
 ///
 /// Has something to do with [bar](./fn.bar.html).
+/// Links to the [crate root](./index.html#functions),
+/// but also has a [broken link](./index.html#a)!
 pub fn foo() {}
 
 /// Bar function

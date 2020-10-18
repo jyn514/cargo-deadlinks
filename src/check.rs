@@ -27,14 +27,15 @@ impl fmt::Display for HttpError {
 
 #[derive(Debug)]
 pub enum CheckError {
-    File(PathBuf),
+    LocalFileNotFound(PathBuf),
+    MissingFragment(String),
     Http(HttpError),
 }
 
 impl fmt::Display for CheckError {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self {
-            CheckError::File(path) => {
+            CheckError::LocalFileNotFound(path) => {
                 write!(f, "Linked file at path {} does not exist!", path.display())
             }
             CheckError::Http(err) => err.fmt(f),
@@ -64,11 +65,19 @@ fn check_file_url(url: &Url, _ctx: &CheckContext) -> Result<(), CheckError> {
 
     if path.exists() {
         debug!("Linked file at path {} does exist.", path.display());
-        Ok(())
+        if let Some(fragment) = url.fragment() {
+            check_url_fragment(fragment, path, ctx)
+        } else {
+            Ok(())
+        }
     } else {
         debug!("Linked file at path {} does not exist!", path.display());
-        Err(CheckError::File(path))
+        Err(CheckError::LocalFileNotFound(path))
     }
+}
+
+fn check_url_fragment(fragment: &str, path: &Path, ctx: &CheckContext) -> Result<(), CheckError> {
+    let anchors = parse::parse_inner(path);
 }
 
 /// Check a URL with "http" or "https" scheme for availability. Returns `false` if it is unavailable.
