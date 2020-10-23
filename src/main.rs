@@ -218,12 +218,11 @@ fn walk_dir(dir_path: &Path, args: &MainArgs) -> bool {
 
 #[cfg(test)]
 mod test {
-    use super::has_docs;
     use cargo_metadata::Target;
+    use super::has_docs;
 
     fn target(crate_types: &str, kind: &str) -> Target {
-        serde_json::from_str(&format!(
-            r#"{{
+        serde_json::from_str(&format!(r#"{{
             "crate_types": ["{}"],
             "kind": ["{}"],
             "name": "simple",
@@ -231,10 +230,7 @@ mod test {
             "edition": "2018",
             "doctest": false,
             "test": false
-        }}"#,
-            crate_types, kind
-        ))
-        .unwrap()
+        }}"#, crate_types, kind)).unwrap()
     }
 
     #[test]
