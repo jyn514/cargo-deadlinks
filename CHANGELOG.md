@@ -2,6 +2,9 @@
 
 ## NEXT (UNRELEASED)
 
+<a name="0.4.3"></a>
+## 0.4.3 (2020-10-12)
+
 #### Fixes
 
 * No longer try to document examples that are dynamic libraries
