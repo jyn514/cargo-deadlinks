@@ -23,7 +23,9 @@ const PREFIX_BLACKLIST: [&str; 1] = ["https://doc.rust-lang.org"];
 
 #[derive(Debug)]
 pub enum IoError {
+    #[cfg(feature = "http-check")]
     HttpUnexpectedStatus(ureq::Response),
+    #[cfg(feature = "http-check")]
     HttpFetch(ureq::Transport),
     FileIo(String, std::io::Error),
 }
@@ -31,12 +33,14 @@ pub enum IoError {
 impl fmt::Display for IoError {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self {
+            #[cfg(feature = "http-check")]
             IoError::HttpUnexpectedStatus(resp) => write!(
                 f,
                 "Unexpected HTTP status fetching {}: {}",
                 resp.get_url(),
                 resp.status_text()
             ),
+            #[cfg(feature = "http-check")]
             IoError::HttpFetch(e) => write!(f, "Error fetching {}", e),
             IoError::FileIo(url, e) => write!(f, "Error fetching {}: {}", url, e),
         }
@@ -89,6 +93,7 @@ pub enum CheckError {
     Io(Box<IoError>),
 }
 
+#[cfg(feature = "http-check")]
 impl From<ureq::Error> for CheckError {
     fn from(err: ureq::Error) -> Self {
         let io_err = match err {
@@ -289,14 +294,6 @@ fn check_file_fragment(
 
 /// Check a URL with "http" or "https" scheme for availability. Returns `Err` if it is unavailable.
 fn check_http_url(url: &Url, ctx: &CheckContext) -> Result<(), CheckError> {
-    if ctx.check_http == HttpCheck::Ignored {
-        warn!(
-            "Skip checking {} as checking of http URLs is turned off",
-            url
-        );
-        return Ok(());
-    }
-
     for blacklisted_prefix in PREFIX_BLACKLIST.iter() {
         if url.as_str().starts_with(blacklisted_prefix) {
             warn!(
@@ -307,29 +304,42 @@ fn check_http_url(url: &Url, ctx: &CheckContext) -> Result<(), CheckError> {
         }
     }
 
-    if ctx.check_http == HttpCheck::Forbidden {
-        return Err(CheckError::HttpForbidden(url.clone()));
+    match ctx.check_http {
+        HttpCheck::Ignored => {
+            warn!(
+                "Skip checking {} as checking of http URLs is turned off",
+                url
+            );
+            return Ok(());
+        }
+        HttpCheck::Forbidden => {
+            return Err(CheckError::HttpForbidden(url.clone()));
+        }
+        #[cfg(feature = "http-check")]
+        HttpCheck::Enabled => {
+            // The URL might contain a fragment. In that case we need a full GET
+            // request to check if the fragment exists.
+            if url.fragment().is_none() || !ctx.check_fragments {
+                match ureq::head(url.as_str()).call() {
+                    Err(ureq::Error::Status(405, _)) => {
+                        // If HEAD isn't allowed, try sending a GET instead
+                        ureq::get(url.as_str()).call()?;
+                        Ok(())
+                    }
+                    Err(other) => Err(other.into()),
+                    Ok(_) => Ok(()),
+                }
+            } else {
+                // the URL might contain a fragment, in that case we need to check if
+                // the fragment exists, this issues a GET request
+                check_http_fragment(url, url.fragment().unwrap())
+            }
+        }
     }
 
-    // The URL might contain a fragment. In that case we need a full GET
-    // request to check if the fragment exists.
-    if url.fragment().is_none() || !ctx.check_fragments {
-        match ureq::head(url.as_str()).call() {
-            Err(ureq::Error::Status(405, _)) => {
-                // If HEAD isn't allowed, try sending a GET instead
-                ureq::get(url.as_str()).call()?;
-                Ok(())
-            }
-            Err(other) => Err(other.into()),
-            Ok(_) => Ok(()),
-        }
-    } else {
-        // the URL might contain a fragment, in that case we need to check if
-        // the fragment exists, this issues a GET request
-        check_http_fragment(url, url.fragment().unwrap())
-    }
 }
 
+#[cfg(feature = "http-check")]
 fn check_http_fragment(url: &Url, fragment: &str) -> Result<(), CheckError> {
     debug!("Checking fragment {} of URL {}.", fragment, url.as_str());
 

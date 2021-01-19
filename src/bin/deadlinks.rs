@@ -35,7 +35,13 @@ struct MainArgs {
 impl From<&MainArgs> for CheckContext {
     fn from(args: &MainArgs) -> CheckContext {
         let check_http = if args.flag_check_http {
-            HttpCheck::Enabled
+            #[cfg(feature = "http-check")]
+            { HttpCheck::Enabled }
+            #[cfg(not(feature = "http-check"))]
+            {
+                eprintln!("error: HTTP checking was requested, but the `http-check` feature is disabled");
+                process::exit(1);
+            }
         } else if args.flag_forbid_http {
             HttpCheck::Forbidden
         } else {

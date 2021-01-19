@@ -18,8 +18,9 @@ required-features = ["cargo"]
 name = "deadlinks"
 
 [features]
+http-check = ["ureq"]
 cargo = ["cargo_metadata", "serde_json"]
-default = ["cargo"]
+default = ["cargo", "http-check"]
 
 [dependencies]
 cached = { version = "0.20.0", default-features = false }
@@ -33,13 +34,18 @@ num_cpus = "1.8"
 once_cell = "1.5.1"
 rayon = "1.0"
 regex = { version = "1", default-features = false, features = ["std", "perf"] }
-ureq = { version = "2.0.1", features = ["tls"], default-features = false }
 serde = "1.0"
 serde_derive = "1.0"
 url = "2"
 # Try to keep this in sync with `url`'s version
 percent-encoding = "2"
 walkdir = "2.1"
+
+[dependencies.ureq]
+version = "2.0.1"
+features = ["tls"]
+default-features = false
+optional = true
 
 [dev-dependencies]
 assert_cmd = "1.0"

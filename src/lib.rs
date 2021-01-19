@@ -20,7 +20,8 @@ mod parse;
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
 /// What behavior should deadlinks use for HTTP links?
 pub enum HttpCheck {
-    /// Make an internet request to ensure the link works
+    /// Make an internet request to ensure the link works.
+    #[cfg(feature = "http-check")]
     Enabled,
     /// Do nothing when encountering a link
     Ignored,
